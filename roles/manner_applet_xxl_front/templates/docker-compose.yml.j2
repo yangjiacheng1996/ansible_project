@@ -1,0 +1,55 @@
+---
+version: '3'
+services:
+  # 注意：5个容器的启动是有顺序的！
+  # admin-front前端，就暴露一些图片，没有依赖，所以最先启动。
+  # schedule-admin容器里运行的是开源的xxl定时调度服务，这个服务作为常规服务，只需要一个数据库，不依赖其他服务，所以第二个启动。
+  # nginx_proxy是二次负载均衡。因为后面启动的服务都需要走负载均衡进行回调和反向代理，并将xxl暴露到公网。所以这个第三个启动。
+  # mp-api 第四个启动，因为后一个容器会调度它。
+  # 最后启动admin-api，它会调度mp-api，然后自身的调度器连接xxl，正常服务走负载均衡。依赖很多东西，所以放最后。
+  admin-front:
+    container_name: admin-front
+    image: "{{ namespace1 }}/admin-front:{{ admin_front_version }}"
+    restart: always
+    ports:
+      - "13001:80"
+    networks:
+      - prod_front
+    healthcheck:
+      # 这是前端容器，所以只检查80端口是否正常
+      test: [ "CMD-SHELL", "curl -sS http://127.0.0.1 || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  schedule-admin:
+    container_name: schedule-admin
+    image: "{{ namespace1 }}/schedule-admin:{{ schedule_admin_version }}"
+    restart: always
+    volumes:
+      - /logs_applet/schedule_admin/:/logs/
+    ports:
+      - "14001:7021"
+    networks:
+      - prod_xxl
+    environment:
+      - JAVA_OPTS=-Dspring.profiles.active=prod
+      - PARAMS=''
+      - TZ=PRC
+    depends_on:
+      - admin-front
+    healthcheck:
+      # 这个容器镜像是根据openjdk容器构建而成的，但是openjdk容器默认没有curl命令，只有wget
+      test: [ "CMD-SHELL", "netstat -natlp | grep 7021 || exit 1" ]
+      interval: 2m
+      timeout: 10s
+      retries: 3
+
+# 创建一个网桥，和默认的docker0网桥的类型一样，可以通过docker network ls查看。
+# 后又创建了一个prod_nignx网桥，这个网桥里面只放nignx。
+networks:
+  prod_xxl:
+    driver: bridge
+  prod_front:
+    driver: bridge
+

@@ -1,0 +1,270 @@
+---
+version: '3'
+services:
+  # 注意：5个容器的启动是有顺序的！
+  # admin-front前端，就暴露一些图片，没有依赖，所以最先启动。
+  # schedule-admin容器里运行的是开源的xxl定时调度服务，这个服务作为常规服务，只需要一个数据库，不依赖其他服务，所以第二个启动。
+  # nginx_proxy是二次负载均衡。因为后面启动的服务都需要走负载均衡进行回调和反向代理，并将xxl暴露到公网。所以这个第三个启动。
+  # mp-api 第四个启动，因为后一个容器会调度它。
+  # 最后启动admin-api，它会调度mp-api，然后自身的调度器连接xxl，正常服务走负载均衡。依赖很多东西，所以放最后。
+
+  nginx-proxy1:
+    container_name: nginx-proxy1
+    image: "nginx:latest"
+    restart: always
+    command: ["nginx", "-g", 'daemon off;']
+    volumes:
+      - /opt/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - /logs_applet/nginx_proxy1/:/var/log/nginx/
+    ports:
+      - "15001:80"
+    networks:
+      - prod_nginx1
+    environment:
+      - TZ=Asia/Shanghai
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -sS http://127.0.0.1 || exit 1" ]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+
+  nginx-proxy2:
+    container_name: nginx-proxy2
+    image: "nginx:latest"
+    restart: always
+    command: ["nginx", "-g", 'daemon off;']
+    volumes:
+      - /opt/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - /logs_applet/nginx_proxy2/:/var/log/nginx/
+    ports:
+      - "15002:80"
+    networks:
+      - prod_nginx2
+    environment:
+      - TZ=Asia/Shanghai
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -sS http://127.0.0.1 || exit 1" ]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+
+  nginx-proxy3:
+    container_name: nginx-proxy3
+    image: "nginx:latest"
+    restart: always
+    command: ["nginx", "-g", 'daemon off;']
+    volumes:
+      - /opt/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - /logs_applet/nginx_proxy3/:/var/log/nginx/
+    ports:
+      - "15003:80"
+    networks:
+      - prod_nginx3
+    environment:
+      - TZ=Asia/Shanghai
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -sS http://127.0.0.1 || exit 1" ]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+
+  nginx-proxy4:
+    container_name: nginx-proxy4
+    image: "nginx:latest"
+    restart: always
+    command: ["nginx", "-g", 'daemon off;']
+    volumes:
+      - /opt/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - /logs_applet/nginx_proxy4/:/var/log/nginx/
+    ports:
+      - "15004:80"
+    networks:
+      - prod_nginx4
+    environment:
+      - TZ=Asia/Shanghai
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -sS http://127.0.0.1 || exit 1" ]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+
+  mp-api1:
+    container_name: mp-api1
+    image: "{{ namespace1 }}/mp-api:{{ mp_api_version }}"
+    restart: always
+    volumes:
+      - /logs_applet/mp_api1/:/logs/
+    ports:
+      - "10001:9002"
+      # - "9003:9003"
+    networks:
+      - prod_mp1
+    environment:
+      - JAVA_OPTS=-Dspring.profiles.active=prod
+      - PARAMS=''
+      - TZ=Asia/Shanghai
+    deploy:
+      resources:
+        reservations:
+          cpus: '0.5'
+          memory: 200M
+    healthcheck:
+      # 这个容器镜像是根据openjdk容器构建而成的，但是openjdk容器默认没有curl命令，只有wget
+      test: [ "CMD-SHELL", "wget --spider http://127.0.0.1:9002/ping/ || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  mp-api2:
+    container_name: mp-api2
+    image: "{{ namespace1 }}/mp-api:{{ mp_api_version }}"
+    restart: always
+    volumes:
+      - /logs_applet/mp_api2/:/logs/
+    ports:
+      - "10002:9002"
+      # - "9003:9003"
+    networks:
+      - prod_mp2
+    environment:
+      - JAVA_OPTS=-Dspring.profiles.active=prod
+      - PARAMS=''
+      - TZ=Asia/Shanghai
+    deploy:
+      resources:
+        reservations:
+          cpus: '0.5'
+          memory: 200M
+    healthcheck:
+      # 这个容器镜像是根据openjdk容器构建而成的，但是openjdk容器默认没有curl命令，只有wget
+      test: [ "CMD-SHELL", "wget --spider http://127.0.0.1:9002/ping/ || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  mp-api3:
+    container_name: mp-api3
+    image: "{{ namespace1 }}/mp-api:{{ mp_api_version }}"
+    restart: always
+    volumes:
+      - /logs_applet/mp_api3/:/logs/
+    ports:
+      - "10003:9002"
+      # - "9003:9003"
+    networks:
+      - prod_mp3
+    environment:
+      - JAVA_OPTS=-Dspring.profiles.active=prod
+      - PARAMS=''
+      - TZ=Asia/Shanghai
+    deploy:
+      resources:
+        reservations:
+          cpus: '0.5'
+          memory: 200M
+    healthcheck:
+      # 这个容器镜像是根据openjdk容器构建而成的，但是openjdk容器默认没有curl命令，只有wget
+      test: [ "CMD-SHELL", "wget --spider http://127.0.0.1:9002/ping/ || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  mp-api4:
+    container_name: mp-api4
+    image: "{{ namespace1 }}/mp-api:{{ mp_api_version }}"
+    restart: always
+    volumes:
+      - /logs_applet/mp_api4/:/logs/
+    ports:
+      - "10004:9002"
+      # - "9003:9003"
+    networks:
+      - prod_mp4
+    environment:
+      - JAVA_OPTS=-Dspring.profiles.active=prod
+      - PARAMS=''
+      - TZ=Asia/Shanghai
+    deploy:
+      resources:
+        reservations:
+          cpus: '0.5'
+          memory: 200M
+    healthcheck:
+      # 这个容器镜像是根据openjdk容器构建而成的，但是openjdk容器默认没有curl命令，只有wget
+      test: [ "CMD-SHELL", "wget --spider http://127.0.0.1:9002/ping/ || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  admin-api1:
+    container_name: admin-api1
+    image: "{{ namespace1 }}/admin-api:{{ admin_api_version }}"
+    restart: always
+    volumes:
+      - /logs_applet/admin_api1/:/logs/
+    ports:
+      - "11001:9007"
+      - "12001:9010"
+    networks:
+      - prod_admin1
+    environment:
+      - JAVA_OPTS=-Dspring.profiles.active=prod
+      - PARAMS=''
+      - TZ=Asia/Shanghai
+    depends_on:
+      - nginx-proxy1
+    healthcheck:
+      # 这个容器镜像是根据openjdk容器构建而成的，但是openjdk容器默认没有curl命令，只有wget
+      test: [ "CMD-SHELL", "wget --spider http://127.0.0.1:9007/ping/ || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  admin-api2:
+    container_name: admin-api2
+    image: "{{ namespace1 }}/admin-api:{{ admin_api_version }}"
+    restart: always
+    volumes:
+      - /logs_applet/admin_api2/:/logs/
+    ports:
+      - "11002:9007"
+      - "12002:9010"
+    networks:
+      - prod_admin2
+    environment:
+      - JAVA_OPTS=-Dspring.profiles.active=prod
+      - PARAMS=''
+      - TZ=Asia/Shanghai
+    depends_on:
+      - nginx-proxy1
+    healthcheck:
+      # 这个容器镜像是根据openjdk容器构建而成的，但是openjdk容器默认没有curl命令，只有wget
+      test: [ "CMD-SHELL", "wget --spider http://127.0.0.1:9007/ping/ || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# 创建一个网桥，和默认的docker0网桥的类型一样，可以通过docker network ls查看。
+# 后又创建了一个prod_nignx网桥，这个网桥里面只放nignx。
+networks:
+  prod_nginx1:
+    driver: bridge
+  prod_nginx2:
+    driver: bridge
+  prod_nginx3:
+    driver: bridge
+  prod_nginx4:
+    driver: bridge
+  prod_mp1:
+    driver: bridge
+  prod_mp2:
+    driver: bridge
+  prod_mp3:
+    driver: bridge
+  prod_mp4:
+    driver: bridge
+  prod_admin1:
+    driver: bridge
+  prod_admin2:
+    driver: bridge
+

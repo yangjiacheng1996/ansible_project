@@ -1,0 +1,6 @@
+---
+- name: run loop remove local images
+  hosts: applet
+  gather_facts: yes
+  roles:
+    - role: remove_image

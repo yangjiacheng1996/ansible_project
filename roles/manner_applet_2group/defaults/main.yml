@@ -1,0 +1,20 @@
+---
+# defaults file for manner_applet_pull_and_up
+mp_api_version: 'v0.3.6'
+admin_api_version: 'v0.3.6'
+
+accessKey: LTAxxxxxxxxxxxxxxx
+secretKey: YPZxxxxxxxxxxxxxxx
+slb_virtual_server_group: rsp-ufxxxxxxxxxxxx
+ecs_region: cn-shanghai
+virtual_server_nginx_ports: ["15001","15002","15003","15004"]
+
+region1: "registry-vpc.cn-shanghai.aliyuncs.com"
+namespace1: 'registry-vpc.cn-shanghai.aliyuncs.com/xxxxxxx'
+username1: 'xxxxxxxx'
+password1: 'xxxxxxxx'
+
+namespace2: 'registry.cn-beijing.aliyuncs.com/xxxxxxxxx'
+namespace3: 'registry.cn-hangzhou.aliyuncs.com/xxxxxxxxxxxx'
+
+

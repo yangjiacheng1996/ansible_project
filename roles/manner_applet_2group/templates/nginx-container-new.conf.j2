@@ -1,0 +1,229 @@
+user              nginx;
+worker_processes  {{ ansible_processor_vcpus }};#与cpu核数一致
+worker_cpu_affinity auto;#采用Nginx推荐的CPU绑核策略方式
+
+error_log  /var/log/nginx/error.log warn;
+pid        /var/run/nginx.pid;
+
+events {
+    use epoll;#开启epoll事件驱动模型
+    worker_connections  10000;
+}
+
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for" "$http_Authorization" $request_body';
+
+    access_log  /var/log/nginx/access.log  main;
+
+    sendfile        on;
+    #tcp_nopush     on;
+
+    #keepalive_timeout  0;
+    keepalive_timeout  65;
+
+    #gzip  on;
+
+    underscores_in_headers on;
+
+    upstream mp_api_server{
+        server 192.168.0.51:10001 max_fails=1 fail_timeout=5s weight=100;
+        server 192.168.0.51:10002 max_fails=1 fail_timeout=5s weight=100;
+        #server 192.168.0.51:10003 max_fails=1 fail_timeout=5s weight=100;
+        #server 192.168.0.51:10004 max_fails=1 fail_timeout=5s weight=100;
+        #server 192.168.0.51:10005 max_fails=1 fail_timeout=5s weight=100;
+		server 192.168.0.52:10001 max_fails=1 fail_timeout=5s weight=100;
+        server 192.168.0.52:10002 max_fails=1 fail_timeout=5s weight=100;
+        #server 192.168.0.52:10003 max_fails=1 fail_timeout=5s weight=100;
+        #server 192.168.0.52:10004 max_fails=1 fail_timeout=5s weight=100;
+        #server 192.168.0.52:10005 max_fails=1 fail_timeout=5s weight=100;
+		server 192.168.0.53:10001 max_fails=1 fail_timeout=5s weight=100;
+        server 192.168.0.53:10002 max_fails=1 fail_timeout=5s weight=100;
+        #server 192.168.0.53:10003 max_fails=1 fail_timeout=5s weight=100;
+        #server 192.168.0.53:10004 max_fails=1 fail_timeout=5s weight=100;
+        #server 192.168.0.53:10005 max_fails=1 fail_timeout=5s weight=100;
+		server 192.168.0.54:10001 max_fails=1 fail_timeout=5s weight=100;
+        server 192.168.0.54:10002 max_fails=1 fail_timeout=5s weight=100;
+        #server 192.168.0.54:10003 max_fails=1 fail_timeout=5s weight=100;
+        #server 192.168.0.54:10004 max_fails=1 fail_timeout=5s weight=100;
+        #server 192.168.0.54:10005 max_fails=1 fail_timeout=5s weight=100;
+    }
+
+    upstream admin_api_server{
+        server 192.168.0.51:9009 max_fails=1 fail_timeout=5s weight=8;
+		server 192.168.0.52:9009 max_fails=1 fail_timeout=5s weight=8;
+		server 192.168.0.53:9009 max_fails=1 fail_timeout=5s weight=4;
+		server 192.168.0.54:9009 max_fails=1 fail_timeout=5s weight=4;
+    }
+
+    upstream admin_front_server{
+        server 192.168.0.51:9527 max_fails=1 fail_timeout=5s weight=8;
+		server 192.168.0.52:9527 max_fails=1 fail_timeout=5s weight=8;
+		server 192.168.0.53:9527 max_fails=1 fail_timeout=5s weight=4;
+		server 192.168.0.54:9527 max_fails=1 fail_timeout=5s weight=4;
+    }
+
+    upstream schedule-admin-server{
+        #发生错误一次，隔5秒再启用这个服务器
+        server 192.168.0.51:7021 max_fails=1 fail_timeout=5s weight=8;
+		server 192.168.0.52:7021 max_fails=1 fail_timeout=5s weight=8;
+		server 192.168.0.53:7021 max_fails=1 fail_timeout=5s weight=4;
+		server 192.168.0.54:7021 max_fails=1 fail_timeout=5s weight=4;
+    }
+
+    #定义白名单ip列表变量
+    geo $whiteiplist{
+        default 1;
+        47.100.100.0/24 0;
+    }
+    #使用map指令映射将白名单列表中客户端请求ip为空串
+    map $whiteiplist $limit{
+        1 "$http_x_forwarded_for";
+        0 "";
+    }
+
+    limit_req_zone  $binary_remote_addr zone=one:10m rate=50r/s;#限流配置 限制了每秒只接受某个ip 5次每秒的请求频率
+    limit_req_zone  $http_Authorization zone=auth:10m rate=50r/s;#限流配置 限制了每秒只接受每个用户token 5次每秒的请求频率
+    limit_conn_zone $limit zone=conn:10m;#限流配置 限制连接数
+
+    # Load config files from the /etc/nginx/conf.d directory
+    # The default server is in conf.d/default.conf
+    #include /etc/nginx/conf.d/*.conf;
+    server {
+        listen       80;
+        listen  [::]:80;
+
+        #charset koi8-r;
+        access_log  /var/log/nginx/access.log  main;
+
+        location / {
+            limit_req zone=one burst=1;#burst参数为超过频率限制的最大ip数量，如果超出burst，则其他ip再超出频率就直接返回503
+            return 200;
+            #proxy_pass  http://sentry-ip:9000;
+        }
+
+        location ~/actuator/.*{
+            return 403;
+        }
+
+        location /mp-api/v1/ {
+            limit_req zone=auth burst=100;#burst参数为超过频率限制的最大ip数量，如果超出burst，则其他ip再超出频率就直接返回503
+            proxy_pass  http://mp_api_server/;
+            proxy_set_header Host $host:9002;
+            #故障转移
+            proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504 http_403 http_404 http_429 non_idempotent;
+            #将请求传递到下一个服务器可以通过尝试次数和时间来限制,限制请求可以传递到下一个服务器的时间。 0值关闭此限制。
+            proxy_next_upstream_timeout 0;
+            #限制将请求传递到下一个服务器的可能尝试次数。 0值关闭此限制。
+            proxy_next_upstream_tries 0;
+            proxy_read_timeout 50s;
+            proxy_connect_timeout 50s;
+            proxy_send_timeout 100s;
+        }
+
+        location /admin-api/v1/ {
+            limit_req zone=auth burst=20;#burst参数为超过频率限制的最大ip数量，如果超出burst，则其他ip再超出频率就直接返回503
+            proxy_pass  http://admin_api_server/;
+            proxy_set_header Host $host:9009;
+            #故障转移
+            proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504 http_403 http_404 http_429 non_idempotent;
+            #将请求传递到下一个服务器可以通过尝试次数和时间来限制,限制请求可以传递到下一个服务器的时间。 0值关闭此限制。
+            proxy_next_upstream_timeout 0;
+            #限制将请求传递到下一个服务器的可能尝试次数。 0值关闭此限制。
+            proxy_next_upstream_tries 0;
+            proxy_read_timeout 5s;
+            proxy_connect_timeout 5s;
+            proxy_send_timeout 10s;
+        }
+
+        #SIT天财商龙回调转移至UAT遗留接口配置
+        location /ext/v1/ {
+            limit_req zone=one burst=50;#burst参数为超过频率限制的最大ip数量，如果超出burst，则其他ip再超出频率就直接返回503
+            proxy_pass  http://admin_api_server/;
+            proxy_set_header Host $host:9009;
+            #故障转移
+            proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504 http_403 http_404 http_429 non_idempotent;
+            #将请求传递到下一个服务器可以通过尝试次数和时间来限制,限制请求可以传递到下一个服务器的时间。 0值关闭此限制。
+            proxy_next_upstream_timeout 0;
+            #限制将请求传递到下一个服务器的可能尝试次数。 0值关闭此限制。
+            proxy_next_upstream_tries 0;
+            proxy_read_timeout 5s;
+            proxy_connect_timeout 5s;
+            proxy_send_timeout 10s;
+        }
+
+        location /ext/tcsl/v1/ {
+            set $is_matched 0;
+            if ($args ~* (?:clientKey=)(jpXCmeSCDNl1yilW)){
+               set $is_matched 1;
+            }
+            if ($is_matched = 0) {
+               return 404;
+            }
+            limit_req zone=one burst=50;#burst参数为超过频率限制的最大ip数量，如果超出burst，则其他ip再超出频率就直接返回503
+            proxy_pass  http://admin_api_server/tcsl/v1/;
+            proxy_set_header Host $host:9009;
+            #故障转移
+            proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504 http_403 http_404 http_429 non_idempotent;
+            #将请求传递到下一个服务器可以通过尝试次数和时间来限制,限制请求可以传递到下一个服务器的时间。 0值关闭此限制。
+            proxy_next_upstream_timeout 0;
+            #限制将请求传递到下一个服务器的可能尝试次数。 0值关闭此限制。
+            proxy_next_upstream_tries 0;
+            proxy_read_timeout 5s;
+            proxy_connect_timeout 5s;
+            proxy_send_timeout 10s;
+        }
+
+        location /ext/wx/v1/ {
+            limit_req zone=one burst=50;#burst参数为超过频率限制的最大ip数量，如果超出burst，则其他ip再超出频率就直接返回503
+            proxy_pass  http://admin_api_server/;
+            proxy_set_header Host $host:9009;
+            #故障转移
+            proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504 http_403 http_404 http_429 non_idempotent;
+            #将请求传递到下一个服务器可以通过尝试次数和时间来限制,限制请求可以传递到下一个服务器的时间。 0值关闭此限制。
+            proxy_next_upstream_timeout 0;
+            #限制将请求传递到下一个服务器的可能尝试次数。 0值关闭此限制。
+            proxy_next_upstream_tries 0;
+            proxy_read_timeout 5s;
+            proxy_connect_timeout 5s;
+            proxy_send_timeout 10s;
+        }
+
+        location /admin-front/ {
+            limit_conn conn 50;#限制连接数为50个
+            proxy_pass  http://admin_front_server/;
+            #allow 47.100.100.0/24;#只允许某网段的机器请求访问
+            #deny all;#配合allow使用,禁止所有其它的IP访问
+        }
+
+        location /schedule-admin/ {
+            limit_req zone=one burst=10;#burst参数为超过频率限制的最大ip数量，如果超出burst，则其他ip再超出频率就直接返回503
+            proxy_pass  http://schedule-admin-server;
+            #proxy_set_header Host $host:7021;
+            # 故障转移
+            proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504 http_403 http_404 http_429 non_idempotent;
+            #将请求传递到下一个服务器可以通过尝试次数和时间来限制,限制请求可以传递到下一个服务器的时间。 0值关闭此限制。
+            proxy_next_upstream_timeout 0;
+            #限制将请求传递到下一个服务器的可能尝试次数。 0值关闭此限制。
+            proxy_next_upstream_tries 0;
+            proxy_read_timeout 5s;
+            proxy_connect_timeout 5s;
+            proxy_send_timeout 10s;
+        }
+
+        #error_page  404              /404.html;
+
+        # redirect server error pages to the static page /50x.html
+        #
+        #error_page   500 502 503 504  /50x.html;
+        #location = /50x.html {
+        #    root   /usr/share/nginx/html;
+        #}
+    }
+
+}

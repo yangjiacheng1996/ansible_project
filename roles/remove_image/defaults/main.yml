@@ -1,0 +1,13 @@
+---
+# defaults file for remove_image
+image_tags:
+  - repository: "registry.cn-shanghai.aliyuncs.com/repo-applet-prod/admin-front"
+    tag: "v0.2.1"
+  - repository: "registry.cn-shanghai.aliyuncs.com/repo-applet-prod/admin-api"
+    tag: "v0.2.1"
+  - repository: "registry.cn-shanghai.aliyuncs.com/repo-applet-prod/mp-api"
+    tag: "v0.2.1"
+  - repository: "registry.cn-shanghai.aliyuncs.com/repo-applet-prod/schedule-admin"
+    tag: "v0.2.1"
+
+

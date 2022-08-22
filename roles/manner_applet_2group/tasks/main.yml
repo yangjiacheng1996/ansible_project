@@ -1,0 +1,101 @@
+---
+# tasks file for manner_applet_admin
+  - name: "copy docker compose template file to remote /opt"
+    ansible.builtin.template:
+      src: docker-compose.yml.j2
+      dest: /opt/docker-compose-2group.yml
+      owner: root
+      group: root
+      mode: '0700'
+
+  - name: copy slb.py command to remote node
+    ansible.builtin.copy: # 将files/slb.py 分发到每台服务器的/opt目录下
+      src: slb.py
+      dest: /opt/slb.py
+      owner: root
+      group: root
+      mode: '0700'
+      backup: yes
+
+  - name: "create path /opt/nginx"
+    file:
+      path: /opt/nginx/
+      state: directory
+      mode: '0755'
+
+  - name: "put container nginx config file to /opt/nginx/nginx.conf"
+    ansible.builtin.template:
+      src: nginx-container.conf.j2
+      dest: /opt/nginx/nginx.conf
+      owner: root
+      group: root
+      mode: '0744'
+
+  # - name: "install python-pip "
+  #   shell: "wget https://bootstrap.pypa.io/pip/2.7/get-pip.py && python get-pip.py"
+
+  - name: "upgrade pip , wheel , setuptools to latest version"
+    pip:
+      name: 
+        - pip
+        - wheel
+        - setuptools
+      extra_args: --upgrade
+
+  - name: pip install docker-py 
+    pip:
+      name:
+        - pathlib>=1.0.1
+        - docker-py>=1.10.6
+        - click>=8.0.3
+        - aliyun-python-sdk-core>=2.13.35
+        - aliyun-python-sdk-slb>=3.3.8
+        - aliyun-python-sdk-ecs>=4.24.13
+        # - PyYAML>=5.3.0
+      extra_args: -i https://mirrors.aliyun.com/pypi/simple --upgrade
+
+
+  - name: "login admin-front"
+    docker_login:
+      registry_url: "{{ region1 }}"
+      #registry_url: "{{ namespace1 }}"
+      username: "{{ username1 }}"
+      password: "{{ password1 }}"
+      reauthorize: yes
+
+  - name: pull mp-api
+    docker_image:
+      state: present
+      force_source: yes
+      name: "{{ namespace1 }}/mp-api:{{ mp_api_version }}"
+      source: pull
+
+
+  - name: "pull admin-api"
+    docker_image:
+      state: present
+      force_source: yes
+      name: "{{ namespace1 }}/admin-api:{{ admin_api_version }}"
+      source: pull
+
+  - name: "remove remote node from slb"
+    shell:
+      cmd: python3 slb.py removeserver -a {{ accessKey }} -s {{ secretKey }} -v {{ slb_virtual_server_group }} -i {{ ansible_default_ipv4.address }} -r {{ ecs_region }}
+      chdir: /opt/
+
+  - name: "compose up"
+    shell: "cd /opt && docker-compose -f docker-compose-2group.yml --compatibility up -d && sleep 200"
+
+  - name: "restart all nginx-proxy container"
+    shell: "docker restart $(docker ps -a | grep nginx-proxy | cut -c 1-12) && sleep 60 && docker ps | grep nginx-proxy | grep healthy"
+
+  - name: add server nginx to SLB virtual server group, port 15001-15004
+    shell:
+      cmd: "python slb.py addport -a {{ accessKey }} -s {{ secretKey }} -v {{ slb_virtual_server_group }} -i {{ ansible_default_ipv4.address }} -r {{ ecs_region }} -p {{ item }}"
+      chdir: /opt/
+    with_items: #{{ virtual_server_nginx_ports }}
+      - "15001"
+      - "15002"
+      - "15003"
+      - "15004"
+

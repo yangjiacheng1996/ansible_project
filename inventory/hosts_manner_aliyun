@@ -1,0 +1,28 @@
+[development]
+triangle001 ansible_host=139.224.29.81 ansible_user=root ansible_password=hahahaha
+triangle004 ansible_host=47.117.137.177 ansible_user=root ansible_password=hahahaha
+triangle007 ansible_host=47.102.87.1 ansible_user=root ansible_password=hahahaha
+
+[group1]
+prod003 ansible_host=192.168.0.53 ansible_user=root ansible_password=mannercoffee ansible_python_interpreter=/usr/bin/python3
+prod004 ansible_host=192.168.0.54 ansible_user=root ansible_password=mannercoffee ansible_python_interpreter=/usr/bin/python3
+
+[xf]
+admin001 ansible_host=192.168.0.41 ansible_user=root ansible_password=mannercoffee ansible_python_interpreter=/usr/bin/python3
+admin002 ansible_host=192.168.0.42 ansible_user=root ansible_password=mannercoffee ansible_python_interpreter=/usr/bin/python3
+
+[group2]
+prod001 ansible_host=192.168.0.51 ansible_user=root ansible_password=mannercoffee ansible_python_interpreter=/usr/bin/python3
+prod002 ansible_host=192.168.0.52 ansible_user=root ansible_password=mannercoffee ansible_python_interpreter=/usr/bin/python3
+prod003 ansible_host=192.168.0.53 ansible_user=root ansible_password=mannercoffee ansible_python_interpreter=/usr/bin/python3
+prod004 ansible_host=192.168.0.54 ansible_user=root ansible_password=mannercoffee ansible_python_interpreter=/usr/bin/python3
+prod005 ansible_host=192.168.0.55 ansible_user=root ansible_password=mannercoffee ansible_python_interpreter=/usr/bin/python3
+prod006 ansible_host=192.168.0.56 ansible_user=root ansible_password=mannercoffee ansible_python_interpreter=/usr/bin/python3
+prod007 ansible_host=192.168.0.57 ansible_user=root ansible_password=mannercoffee ansible_python_interpreter=/usr/bin/python3
+prod008 ansible_host=192.168.0.58 ansible_user=root ansible_password=mannercoffee ansible_python_interpreter=/usr/bin/python3
+
+
+[maintain]
+devops ansible_host=192.168.0.250 ansible_user=root ansible_password=mannercoffee
+
+

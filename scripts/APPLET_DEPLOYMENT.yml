@@ -1,0 +1,23 @@
+---
+- name: build xxl and admin-front
+  hosts: xf
+  gather_facts: yes
+  pre_tasks: # 全平台包管理器缓存更新
+    - name: update Package Management cache
+      import_tasks: pre_task_update_cache.yml
+  roles:
+    - role: manner_applet_xxl_front
+    #- role: test
+
+- name: deploy 8 core servers
+  hosts: group2
+  serial: 2 # 每次同时升级2台服务器，其他服务器继续提供服务
+  gather_facts: yes # 获取各个主机信息
+  strategy: linear  # ansible执行task默认是一批一批执行的（linear模式），上一批没有全部执行完，下一批不开始。 free模式先执行完某一步的机器不用等待同一批次其他机器完成，继续执行下一步。节约时间
+  pre_tasks: # 全平台包管理器缓存更新
+    - name: update Package Management cache
+      import_tasks: pre_task_update_cache.yml
+  roles:
+    - role: manner_applet_2group
+    #- role: test
+

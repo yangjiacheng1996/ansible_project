@@ -1,0 +1,59 @@
+---
+
+  - name: upgrade all rpm packages on RHEL/CentOS/Fedora?Alibaba Linux
+    apt:
+      name: "*"
+      state: latest
+      update_cache: yes
+
+  - name: install docker dependency (deb pkg) 
+    apt:
+      pkg:
+        - ca-certificates 
+        - curl 
+        - gnupg 
+        - lsb-release
+      state: present
+      enabled: yes
+
+  - name: add docker official GPG key to Dedian system
+    shell: 
+      cmd: curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+      chdir: /opt/
+
+  - name: add docker official apt repo to Debian system 
+    shell: echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    args:
+      chdir: /root/
+
+  - name: upgrade docker from official repo
+    apt:
+      pkg:
+        - docker-ce
+        - docker-ce-cli
+        - containerd.io
+      state: latest
+      update_cache: yes
+
+  - name: enable and restart docker 
+    ansible.builtin.service:
+      name: docker
+      state: started
+      enabled: yes
+
+  - name: check docker available
+    shell: 
+      cmd: "docker --version|grep 'Docker version'"
+      chdir: /root/
+
+  - name: pip install docker-py 
+    pip:
+      name:
+        - pathlib>=1.0.1
+        - docker-py>=1.10.6
+        - click>=8.0.3
+        - aliyun-python-sdk-core>=2.13.35
+        - aliyun-python-sdk-slb>=3.3.8
+        - aliyun-python-sdk-ecs>=4.24.13
+        # - PyYAML>=5.3.0
+      extra_args: -i https://mirrors.aliyun.com/pypi/simple

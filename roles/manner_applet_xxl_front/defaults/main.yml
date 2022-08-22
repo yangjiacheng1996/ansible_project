@@ -1,0 +1,14 @@
+---
+# defaults file for manner_applet_pull_and_up
+admin_front_version: 'v0.3.5'
+schedule_admin_version: 'v0.2.2'
+
+region1: "registry-vpc.cn-shanghai.aliyuncs.com"
+namespace1: 'registry-vpc.cn-shanghai.aliyuncs.com/xxxxxxxxx'
+username1: 'xxxxxxxxxx'
+password1: 'xxxxxxxxxxx'
+
+namespace2: 'registry.cn-beijing.aliyuncs.com/xxxxxxxxxxx'
+namespace3: 'registry.cn-hangzhou.aliyuncs.com/xxxxxxxxx'
+
+

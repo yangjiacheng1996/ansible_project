@@ -1,0 +1,15 @@
+---
+# handlers file for manner_applet_pull_and_up
+  - name: restart docker service
+    service:
+      name: docker
+      state: restarted
+
+  - name: restart all nginx-proxy containers
+    shell: docker restart $(docker ps -a|grep nginx-proxy|cut -c 1-12)
+
+  - name: restart all mp-api containers
+    shell: docker restart $(docker ps -a|grep mp-api|cut -c 1-12)
+
+  - name: restart all admin-api containers
+    shell: docker restart $(docker ps -a|grep admin-api|cut -c 1-12)

@@ -1,0 +1,4 @@
+---
+# tasks file for test
+  - name: hello
+    command: "echo hello"
